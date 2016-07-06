@@ -4,7 +4,25 @@ You write into the database table and this processor will push the records to Sa
 
 ## Install
 
+Add the following in your `pom.xml` file.
 
+``` xml
+<repositories>
+  <repository>
+      <id>cloudreach-connect</id>
+      <url>https://raw.githubusercontent.com/EgidioCaprinoCloudreach/cloudreach-connect-to-salesforce-processor/mvn-repo/
+      </url>
+  </repository>
+</repositories>
+
+<dependencies>
+  <dependency>
+      <groupId>com.cloudreach.connect</groupId>
+      <artifactId>to-salesforce-processor</artifactId>
+      <version>1.0</version>
+  </dependency>
+</dependencies>
+```
 
 ## Setup
 
