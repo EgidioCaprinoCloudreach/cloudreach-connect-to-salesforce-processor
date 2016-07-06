@@ -1,4 +1,4 @@
-package com.cloudreach.connect.tosalesforceprocessor.pluginLifecycle;
+package com.cloudreach.connect.tosalesforceprocessor.pluginlifecycles;
 
 import com.cloudreach.connect.api.LogService;
 import com.cloudreach.connect.api.PluginLifecycle;
