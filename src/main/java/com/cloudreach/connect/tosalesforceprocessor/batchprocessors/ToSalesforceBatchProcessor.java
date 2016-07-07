@@ -1,5 +1,6 @@
 package com.cloudreach.connect.tosalesforceprocessor.batchprocessors;
 
+import com.cloudreach.connect.api.LogService;
 import com.cloudreach.connect.api.Result;
 import com.cloudreach.connect.api.batch.BatchProcessor;
 import com.cloudreach.connect.api.context.PluginContext;
@@ -12,6 +13,7 @@ import com.cloudreach.connect.tosalesforceprocessor.services.FeatherModule;
 import com.cloudreach.connect.tosalesforceprocessor.services.SalesforceService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.codejargon.feather.Feather;
 import org.codejargon.feather.Key;
@@ -51,17 +53,21 @@ public class ToSalesforceBatchProcessor implements BatchProcessor {
                 SalesforceService salesforceService = feather.instance(SalesforceService.class);
                 ObjectMapper objectMapper = feather.instance(ObjectMapper.class);
                 TypeReference<Map<String, Object>> mapTypeReference = feather.instance(Key.of(TypeReference.class, "mapTypeReference"));
-                sendRecordsToSalesforce(toSalesforceRecordDao, salesforceService, db, objectMapper, mapTypeReference);
+                LogService logService = feather.instance(LogService.class);
+                sendRecordsToSalesforce(toSalesforceRecordDao, salesforceService, db, objectMapper, mapTypeReference, logService);
             }
         });
         return null;
     }
 
-    private void sendRecordsToSalesforce(ToSalesforceRecordDao toSalesforceRecordDao, SalesforceService salesforceService, Connection db, ObjectMapper objectMapper, TypeReference<Map<String, Object>> mapTypeReference) throws Exception {
+    private void sendRecordsToSalesforce(ToSalesforceRecordDao toSalesforceRecordDao, SalesforceService salesforceService, Connection db, ObjectMapper objectMapper, TypeReference<Map<String, Object>> mapTypeReference, LogService logService) throws Exception {
         List<ToSalesforceRecord> toSalesforceRecords = toSalesforceRecordDao.findAllByProcessed(false);
         for (ToSalesforceRecord toSalesforceRecord : toSalesforceRecords) {
             try {
-                sendToSalesforce(toSalesforceRecord, salesforceService, objectMapper, mapTypeReference);
+                String salesforceId = sendToSalesforce(toSalesforceRecord, salesforceService, objectMapper, mapTypeReference);
+                logService.info("Salesforce ID: " + salesforceId);
+                toSalesforceRecord.setSalesforceId(salesforceId);
+                toSalesforceRecord.setLastError(null);
             } catch (Exception e) {
                 db.rollback();
                 toSalesforceRecord.setLastError(ExceptionUtils.getStackTrace(e));
@@ -74,10 +80,22 @@ public class ToSalesforceBatchProcessor implements BatchProcessor {
         }
     }
 
-    private void sendToSalesforce(ToSalesforceRecord toSalesforceRecord, SalesforceService salesforceService, ObjectMapper objectMapper, TypeReference<Map<String, Object>> mapTypeReference) throws IOException, SalesforceException {
+    private String sendToSalesforce(ToSalesforceRecord toSalesforceRecord, SalesforceService salesforceService, ObjectMapper objectMapper, TypeReference<Map<String, Object>> mapTypeReference) throws IOException, SalesforceException {
         Map<String, Object> data = objectMapper.readValue(toSalesforceRecord.getData(), mapTypeReference);
+        if (toSalesforceRecord.getSalesforceId() != null) {
+            data.put("Id", toSalesforceRecord.getSalesforceId());
+        }
         SalesforceObject salesforceObject = salesforceService.createObject(toSalesforceRecord.getSalesforceObject(), data);
-        salesforceService.upsert(Arrays.asList(salesforceObject));
+        salesforceService.save(Arrays.asList(salesforceObject));
+        for (String field : salesforceObject.getFields()) {
+            if ("Id".equalsIgnoreCase(field)) {
+                String id = StringUtils.trimToNull(salesforceObject.getAsString(field));
+                if (id != null && !id.equalsIgnoreCase("null")) {
+                    return id;
+                }
+            }
+        }
+        throw new RuntimeException("Field not found after save operation: Id");
     }
 
 }

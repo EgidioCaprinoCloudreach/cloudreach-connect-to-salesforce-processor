@@ -43,11 +43,12 @@ public class ToSalesforceRecordDao extends Dao<ToSalesforceRecord> {
         return queryRunner.query(db, query, listHandler, params);
     }
 
-    public List<ToSalesforceRecord> findAllByDataField(String field, String value) throws SQLException {
+    public List<ToSalesforceRecord> findAllBySalesforceObjectAndDataField(String salesforceObject, String field, String value) throws SQLException {
         String query = "SELECT * " +
-                "FROM " + getTable() + "." + getSchema() + " " +
-                "WHERE data->>? = ?";
-        Object[] params = {field, value};
+                "FROM " + getSchema() + "." + getTable() + " " +
+                "WHERE salesforce_object = ? " +
+                "AND data->>? = ?";
+        Object[] params = {salesforceObject, field, value};
         return queryRunner.query(db, query, listHandler, params);
     }
 

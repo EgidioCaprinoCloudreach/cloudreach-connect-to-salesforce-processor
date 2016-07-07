@@ -8,9 +8,7 @@ import org.apache.commons.lang3.StringUtils;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
-import java.util.Collection;
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.*;
 
 @Singleton
 public class SalesforceService {
@@ -28,9 +26,21 @@ public class SalesforceService {
         return salesforce.createObject(name, map);
     }
 
-    public void upsert(Collection<SalesforceObject> salesforceObjects) throws SalesforceException {
+    public void save(Collection<SalesforceObject> salesforceObjects) throws SalesforceException {
+        List<SalesforceObject> toInsert = new ArrayList<>(salesforceObjects.size());
+        List<SalesforceObject> toUpdate = new ArrayList<>(salesforceObjects.size());
+
+        for (SalesforceObject salesforceObject : salesforceObjects) {
+            if (salesforceObject.get("Id") == null) {
+                toInsert.add(salesforceObject);
+            } else {
+                toUpdate.add(salesforceObject);
+            }
+        }
+
         try {
-            salesforce.upsert(salesforceObjects);
+            salesforce.insert(toInsert);
+            salesforce.update(toUpdate);
         } catch (SalesforceException e) {
             throw toMeaningfulException(e);
         }
