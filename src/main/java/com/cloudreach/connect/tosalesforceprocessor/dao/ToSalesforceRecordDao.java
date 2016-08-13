@@ -52,4 +52,13 @@ public class ToSalesforceRecordDao extends Dao<ToSalesforceRecord> {
         return queryRunner.query(db, query, listHandler, params);
     }
 
+    public List<ToSalesforceRecord> findAllBySalesforceObjectOrderByDataField(String salesforceObject, String field) throws SQLException {
+        String query = "SELECT * " +
+                "FROM " + getSchema() + "." + getTable() + " " +
+                "WHERE salesforce_object = ? " +
+                "ORDER BY data->>? ASC";
+        Object[] params = {salesforceObject, field};
+        return queryRunner.query(db, query, listHandler, params);
+    }
+
 }
